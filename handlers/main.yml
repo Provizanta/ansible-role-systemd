@@ -1,0 +1,6 @@
+---
+
+- name: reload daemon
+  become: yes
+  systemd:
+    daemon_reload: yes

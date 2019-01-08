@@ -1,0 +1,32 @@
+---
+
+- set_fact:
+    __target_dir: "{{ unit_file_path[unit['destination']] | default(unit_file_path['primary']) }}"
+    __become: "{{ 'no' if unit['destination'] == 'user' else 'yes' }}"
+
+- debug:
+    msg: "{{__target_dir }}"
+
+- name: ensure directory presence
+  file:
+    path: "{{ __target_dir }}"
+    state: directory
+
+- name: establish units
+  become: "{{ __become }}"
+  template:
+    src: unit.j2 
+    dest: "{{ __target_dir }}/{{ unit['name'] }}.{{ unit['type'] }}"
+    mode: "u=rw,go=r"
+  notify: reload daemon
+
+- name: setup units
+  become: "{{ __become }}"
+  systemd:
+    daemon_reload: yes
+    name: "{{ unit['name'] }}"
+    state: "{{ unit['state'] | default('started') }}"
+    enabled: "{{ unit['enabled'] | default('yes') }}"
+    masked: "{{ unit['masked'] | default('no') }}"
+    scope: "{{ 'user' if unit['destination'] == 'user' else 'system' }}"
+  when: "unit['type'] == 'service'"

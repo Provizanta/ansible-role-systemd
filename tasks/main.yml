@@ -1,0 +1,12 @@
+---
+
+- name: ensure systemd presence
+  become: yes
+  package:
+    name: systemd
+    state: present
+
+- include_tasks: process_unit.yml
+  loop_control:
+    loop_var: unit
+  with_items: "{{ units }}"
