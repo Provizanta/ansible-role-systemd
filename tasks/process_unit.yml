@@ -4,9 +4,6 @@
     __target_dir: "{{ unit_file_path[unit['destination']] | default(unit_file_path['primary']) }}"
     __become: "{{ 'no' if unit['destination'] == 'user' else 'yes' }}"
 
-- debug:
-    msg: "{{__target_dir }}"
-
 - name: ensure directory presence
   file:
     path: "{{ __target_dir }}"
