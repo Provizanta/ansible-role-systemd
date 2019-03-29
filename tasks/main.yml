@@ -9,4 +9,4 @@
 - include_tasks: process_unit.yml
   loop_control:
     loop_var: unit
-  with_items: "{{ units }}"
+  loop: "{{ units }}"
