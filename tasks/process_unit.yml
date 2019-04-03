@@ -2,23 +2,28 @@
 
 - set_fact:
     __target_dir: "{{ unit_file_path[unit['destination']] | default(unit_file_path['primary']) }}"
-    __become: "{{ 'no' if unit['destination'] == 'user' else 'yes' }}"
 
 - name: ensure directory presence
   file:
     path: "{{ __target_dir }}"
+    mode: "u=rwX,go=r"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    recurse: yes
     state: directory
 
 - name: establish units
-  become: "{{ __become }}"
   template:
     src: unit.j2 
     dest: "{{ __target_dir }}/{{ unit['name'] }}.{{ unit['type'] }}"
-    mode: "u=rw,go=r"
+    mode: "u=rwx,go=r"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
   notify: reload daemon
-
-- name: setup units
-  become: "{{ __become }}"
+    
+- name: load unit
+  become: "{{ unit['destination'] != 'user' }}"
+  when: "unit['type'] == 'service'"
   systemd:
     daemon_reload: yes
     name: "{{ unit['name'] }}"
@@ -26,4 +31,4 @@
     enabled: "{{ unit['enabled'] | default('yes') }}"
     masked: "{{ unit['masked'] | default('no') }}"
     scope: "{{ 'user' if unit['destination'] == 'user' else 'system' }}"
-  when: "unit['type'] == 'service'"
+
