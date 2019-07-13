@@ -1,7 +1,15 @@
 ---
 
-- name: reload daemon
-  become: yes
+- name: initialize units
+  become: true
+  when:
+    - item.changed
+    - "item[item.ansible_loop_var]['type'] == 'service'"
   systemd:
-    daemon_reload: yes
-
+    daemon_reload: true
+    name: "{{ item[item.ansible_loop_var]['name'] | regex_replace('[^0-9a-zA-Z_]+', '_') }}.{{ item[item.ansible_loop_var]['type'] }}"
+    state: "{{ item[item.ansible_loop_var]['state'] | default('started') }}"
+    enabled: "{{ item[item.ansible_loop_var]['enabled'] | default('true') }}"
+    masked: "{{ item[item.ansible_loop_var]['masked'] | default('no') }}"
+    scope: "{{ ((item[item.ansible_loop_var]['destination'] | default('primary')) == 'user') | ternary('user', 'system') }}"
+  loop: "{{ unit_configurations.results }}"

@@ -1,12 +1,35 @@
 ---
 
 - name: ensure systemd presence
-  become: yes
+  become: true
   package:
     name: systemd
     state: present
 
-- include_tasks: process_unit.yml
+- name: ensure unit directories presence
+  become: true
+  file:
+    path: "{{ unit_file_path[unit['destination'] | default('primary')] }}"
+    mode: "u=rwX,go=r"
+    owner: "{{ ((unit['destination'] | default('primary')) == 'user') | ternary(lookup('env', 'USER'), 'root') }}"
+    group: "{{ ((unit['destination'] | default('primary')) == 'user') | ternary(lookup('env', 'USER'), 'root') }}"
+    recurse: true
+    state: directory
   loop_control:
     loop_var: unit
   loop: "{{ units }}"
+
+- name: establish units
+  become: true
+  template:
+    src: unit.j2
+    dest: "{{ unit_file_path[unit['destination'] | default('primary')] }}/{{ unit['name'] | regex_replace('[^0-9a-zA-Z_]+', '_') }}.{{ unit['type'] }}"
+    mode: "u=rwx,go=r"
+    owner: "{{ ((unit['destination'] | default('primary')) == 'user') | ternary(lookup('env', 'USER'), 'root') }}"
+    group: "{{ ((unit['destination'] | default('primary')) == 'user') | ternary(lookup('env', 'USER'), 'root') }}"
+  loop_control:
+    loop_var: unit
+  loop: "{{ units }}"
+  register: unit_configurations
+  notify:
+    - initialize units
