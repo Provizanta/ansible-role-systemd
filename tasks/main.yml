@@ -1,35 +1,64 @@
 ---
 
-- name: ensure systemd presence
+- name: establish package
   become: true
   package:
     name: systemd
     state: present
 
-- name: ensure unit directories presence
-  become: true
-  file:
-    path: "{{ unit_file_path[unit['destination'] | default('primary')] }}"
-    mode: "u=rwX,go=r"
-    owner: "{{ ((unit['destination'] | default('primary')) == 'user') | ternary(lookup('env', 'USER'), 'root') }}"
-    group: "{{ ((unit['destination'] | default('primary')) == 'user') | ternary(lookup('env', 'USER'), 'root') }}"
-    recurse: true
-    state: directory
-  loop_control:
-    loop_var: unit
-  loop: "{{ units }}"
+- name: configure units
+  vars:
+    normalized_units: "{{ (units | rejectattr('destination', 'defined') | map('combine', {'destination': 'primary'}) | list)
+            + (units | selectattr('destination', 'defined') | list) }}"
+  block:
+    - name: ensure unit directories presence
+      become: true
+      file:
+        path: "{{ unit_file_path[item] }}"
+        mode: "u=rwX,go=r"
+        owner: "{{ (item == 'user') | ternary(lookup('env', 'USER'), 'root') }}"
+        group: "{{ (item == 'user') | ternary(lookup('env', 'USER'), 'root') }}"
+        recurse: true
+        state: directory
+      loop: "{{ normalized_units | map(attribute='destination') | unique | list }}"
 
-- name: establish units
-  become: true
-  template:
-    src: unit.j2
-    dest: "{{ unit_file_path[unit['destination'] | default('primary')] }}/{{ unit['name'] | regex_replace('[^0-9a-zA-Z_]+', '_') }}.{{ unit['type'] }}"
-    mode: "u=rwx,go=r"
-    owner: "{{ ((unit['destination'] | default('primary')) == 'user') | ternary(lookup('env', 'USER'), 'root') }}"
-    group: "{{ ((unit['destination'] | default('primary')) == 'user') | ternary(lookup('env', 'USER'), 'root') }}"
-  loop_control:
-    loop_var: unit
-  loop: "{{ units }}"
-  register: unit_configurations
-  notify:
-    - initialize units
+    - name: establish units
+      become: true
+      template:
+        src: unit.j2
+        dest: "{{ unit_file_path[unit['destination']] }}/{{ unit['name'] | regex_replace('[^0-9a-zA-Z_]+', '_') }}.{{ unit['type'] }}"
+        mode: "u=rwx,go=r"
+        owner: "{{ (unit['destination'] == 'user') | ternary(lookup('env', 'USER'), 'root') }}"
+        group: "{{ (unit['destination'] == 'user') | ternary(lookup('env', 'USER'), 'root') }}"
+        validate: "systemd-analyze verify %s"
+      loop_control:
+        loop_var: unit
+      loop: "{{ normalized_units }}"
+      register: unit_configurations
+
+    - name: reload daemons
+      block:
+        - name: reload system daemon
+          when: unit_configurations.results | selectattr('changed') | map(attribute='unit') | rejectattr('destination', 'equalto', 'user') | list | length > 0
+          become: true
+          systemd:
+            daemon_reload: true
+
+        - name: reload user daemon
+          when: unit_configurations.results | selectattr('changed') | map(attribute='unit') | selectattr('destination', 'equalto', 'user') | list | length > 0
+          become: false
+          systemd:
+            daemon_reload: true
+            scope: user
+
+    - name: initialize units
+      become: true
+      systemd:
+        name: "{{ unit['name'] | regex_replace('[^0-9a-zA-Z_]+', '_') }}.{{ unit['type'] }}"
+        state: "{{ unit['state'] | default('started') }}"
+        enabled: "{{ unit['enabled'] | default('true') }}"
+        masked: "{{ unit['masked'] | default('no') }}"
+        scope: "{{ (unit['destination'] == 'user') | ternary('user', 'system') }}"
+      loop_control:
+        loop_var: unit
+      loop: "{{ normalized_units | selectattr('type', 'equalto', 'service') | list }}"
