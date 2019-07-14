@@ -23,6 +23,7 @@
       loop: "{{ normalized_units | map(attribute='destination') | unique | list }}"
 
     - name: establish units
+      when: "'content' in unit"
       become: true
       template:
         src: unit.j2
