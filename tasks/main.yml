@@ -30,7 +30,7 @@
         mode: "u=rwx,go=r"
         owner: "{{ (unit['destination'] == 'user') | ternary(lookup('env', 'USER'), 'root') }}"
         group: "{{ (unit['destination'] == 'user') | ternary(lookup('env', 'USER'), 'root') }}"
-        validate: "systemd-analyze verify %s"
+        # validate: "systemd-analyze verify %s"
       loop_control:
         loop_var: unit
       loop: "{{ normalized_units }}"
