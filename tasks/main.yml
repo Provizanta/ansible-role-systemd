@@ -8,33 +8,31 @@
 
 - name: configure units
   vars:
-    normalized_units: "{{ (units | rejectattr('destination', 'defined') | map('combine', {'destination': 'primary'}) | list)
-            + (units | selectattr('destination', 'defined') | list) }}"
+    normalized_systemd_units: "{{ (systemd_units | rejectattr('destination', 'defined') | map('combine', {'destination': 'primary'}) | list)
+            + (systemd_units | selectattr('destination', 'defined') | list) }}"
   block:
     - name: ensure unit directories presence
-      become: true
+      become: "{{ item != 'user' }}"
       file:
         path: "{{ unit_file_path[item] }}"
         mode: "u=rwX,go=r"
-        owner: "{{ (item == 'user') | ternary(lookup('env', 'USER'), 'root') }}"
-        group: "{{ (item == 'user') | ternary(lookup('env', 'USER'), 'root') }}"
         recurse: true
         state: directory
-      loop: "{{ normalized_units | map(attribute='destination') | unique | list }}"
+      loop: "{{ normalized_systemd_units | map(attribute='destination') | unique | list }}"
 
     - name: establish units
-      when: "'content' in unit"
+      when:
+        - "unit['destination'] != 'user'"
+        - "'content' in unit"
       become: true
       template:
         src: unit.j2
         dest: "{{ unit_file_path[unit['destination']] }}/{{ unit['name'] | regex_replace('[^0-9a-zA-Z_]+', '_') }}.{{ unit['type'] }}"
         mode: "u=rwx,go=r"
-        owner: "{{ (unit['destination'] == 'user') | ternary(lookup('env', 'USER'), 'root') }}"
-        group: "{{ (unit['destination'] == 'user') | ternary(lookup('env', 'USER'), 'root') }}"
         # validate: "systemd-analyze verify %s"
       loop_control:
         loop_var: unit
-      loop: "{{ normalized_units }}"
+      loop: "{{ normalized_systemd_units }}"
       register: unit_configurations
 
     - name: reload daemons
@@ -58,8 +56,8 @@
         name: "{{ unit['name'] | regex_replace('[^0-9a-zA-Z_]+', '_') }}.{{ unit['type'] }}"
         state: "{{ unit['state'] | default('started') }}"
         enabled: "{{ unit['enabled'] | default('true') }}"
-        masked: "{{ unit['masked'] | default('no') }}"
+        masked: "{{ unit['masked'] | default('false') }}"
         scope: "{{ (unit['destination'] == 'user') | ternary('user', 'system') }}"
       loop_control:
         loop_var: unit
-      loop: "{{ normalized_units | selectattr('type', 'equalto', 'service') | list }}"
+      loop: "{{ normalized_systemd_units | selectattr('type', 'equalto', 'service') | list }}"

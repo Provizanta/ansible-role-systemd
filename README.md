@@ -13,9 +13,9 @@ None
 Role Variables
 --------------
 
-These defaults are set in `defaults/main.yml`:
+These defaults are set in [defaults/main.yml](./defaults/main.yml):
 
-    units: []   # list of structured unit information
+    systemd_units: []   # list of structured unit information
 
 Each unit element is composed of these variables:
 
@@ -35,21 +35,22 @@ None
 Example Playbook
 ----------------
 
-    - hosts: servers
+    - name: Converge
+      hosts: all
       roles:
-       - role: systemd
-         vars:
-           units:
-             - name: "test service"
-               type: service
-               content: |
-                [Unit]
-                Description=Test service
+        - role: systemd
+          vars:
+            systemd_units:
+              - name: "test service"
+                type: service
+                content: |
+                  [Unit]
+                  Description=Test service
 
-                [Service]
-                Type=oneshot
-                ExecStart=/bin/echo "Just a test service"
-                RemainAfterExit=yes
+                  [Service]
+                  Type=oneshot
+                  ExecStart=/bin/echo "Just a test service"
+                  RemainAfterExit=yes
 
 License
 -------

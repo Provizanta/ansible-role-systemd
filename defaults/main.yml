@@ -1,3 +1,3 @@
 ---
 
-units: []   # list of structured unit information
+systemd_units: []   # list of structured unit information

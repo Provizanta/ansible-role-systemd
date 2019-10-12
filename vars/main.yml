@@ -4,4 +4,4 @@ unit_file_path:
   runtime: /run/systemd/system/
   primary: /etc/systemd/system/
   secondary: /lib/systemd/system/
-  user: /home/{{ lookup('env', 'USER') }}/.local/share/systemd/user/
+  user: "{{ ansible_env.HOME }}/.local/share/systemd/user/"
