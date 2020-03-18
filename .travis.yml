@@ -1,5 +1,7 @@
 ---
 
+dist: bionic
+
 language: python
 python:
   - 3.6
@@ -19,7 +21,7 @@ env:
     - MOLECULE_DISTRO: amazonlinux2
 
 install:
-  - pip install molecule docker
+  - pip install molecule ansible-lint flake8 docker
 
 before_script:
   - cd ../
