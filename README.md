@@ -1,7 +1,7 @@
 Ansible role: systemd
 =========
 
-[![Build Status](https://travis-ci.com/Provizanta/ansible-role-systemd.svg?branch=master)](https://travis-ci.com/Provizanta/ansible-role-systemd)
+![Build & Deploy](https://github.com/Provizanta/ansible-role-systemd/workflows/molecule/badge.svg?branch=master)
 
 Create and setup systemd along with the specified units.
 
