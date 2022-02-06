@@ -2,6 +2,7 @@
 
 galaxy_info:
   role_name: systemd
+  namespace: provizanta
   author: Tibor Csóka
   description: |
     "Establish systemd along with spedified unit configurations."
